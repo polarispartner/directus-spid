@@ -16,6 +16,7 @@ import asyncHandler from '../../utils/async-handler.js';
 import { getConfigFromEnv } from '../../utils/get-config-from-env.js';
 import { LocalAuthDriver } from './local.js';
 import { randomBytes } from 'node:crypto';
+import {readFileSync} from 'node:fs';
 
 // Register the samlify schema validator
 samlify.setSchemaValidator(validator);
@@ -32,8 +33,12 @@ export class SAMLAuthDriver extends LocalAuthDriver {
 		this.config = config;
 		this.usersService = new UsersService({ knex: this.knex, schema: this.schema });
 
+		const spConfig = getConfigFromEnv(`AUTH_${config['provider'].toUpperCase()}_SP`);
+
 		this.sp = samlify.ServiceProvider({
-			...getConfigFromEnv(`AUTH_${config['provider'].toUpperCase()}_SP`),
+			...spConfig,
+			metadata: readFileSync(spConfig['metadata']),
+
 			loginRequestTemplate: {
 				context: `<samlp:AuthnRequest
     xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol"
