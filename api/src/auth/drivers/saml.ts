@@ -1,12 +1,6 @@
 import * as validator from '@authenio/samlify-node-xmllint';
 import { useEnv } from '@directus/env';
-import {
-	ErrorCode,
-	InvalidCredentialsError,
-	InvalidPayloadError,
-	InvalidProviderError,
-	isDirectusError,
-} from '@directus/errors';
+import { ErrorCode, InvalidCredentialsError, InvalidProviderError, isDirectusError } from '@directus/errors';
 import express, { Router } from 'express';
 import * as samlify from 'samlify';
 import { getAuthProvider } from '../../auth.js';
@@ -21,7 +15,7 @@ import type { AuthDriverOptions, User } from '../../types/index.js';
 import asyncHandler from '../../utils/async-handler.js';
 import { getConfigFromEnv } from '../../utils/get-config-from-env.js';
 import { LocalAuthDriver } from './local.js';
-import { isLoginRedirectAllowed } from '../../utils/is-login-redirect-allowed.js';
+import { randomBytes } from 'node:crypto';
 
 // Register the samlify schema validator
 samlify.setSchemaValidator(validator);
@@ -38,7 +32,34 @@ export class SAMLAuthDriver extends LocalAuthDriver {
 		this.config = config;
 		this.usersService = new UsersService({ knex: this.knex, schema: this.schema });
 
-		this.sp = samlify.ServiceProvider(getConfigFromEnv(`AUTH_${config['provider'].toUpperCase()}_SP`));
+		this.sp = samlify.ServiceProvider({
+			...getConfigFromEnv(`AUTH_${config['provider'].toUpperCase()}_SP`),
+			loginRequestTemplate: {
+				context: `<samlp:AuthnRequest
+    xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol"
+    xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion"
+    ID="{ID}"
+    Version="2.0"
+    IssueInstant="{IssueInstant}"
+    Destination="{Destination}"
+    ProtocolBinding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
+    AssertionConsumerServiceIndex="{AssertionConsumerServiceIndex}"
+    AttributeConsumingServiceIndex="{AttributeConsumingServiceIndex}">
+  <saml:Issuer
+      Format="urn:oasis:names:tc:SAML:2.0:nameid-format:entity"
+      NameQualifier="{Issuer}">
+    {Issuer}
+  </saml:Issuer>
+  <samlp:NameIDPolicy
+      Format="urn:oasis:names:tc:SAML:2.0:nameid-format:transient"/>
+     <samlp:RequestedAuthnContext Comparison="exact">
+  <saml:AuthnContextClassRef>https://www.spid.gov.it/SpidL1</saml:AuthnContextClassRef>
+</samlp:RequestedAuthnContext>
+
+</samlp:AuthnRequest>`,
+			},
+		});
+
 		this.idp = samlify.IdentityProvider(getConfigFromEnv(`AUTH_${config['provider'].toUpperCase()}_IDP`));
 	}
 
@@ -86,6 +107,8 @@ export class SAMLAuthDriver extends LocalAuthDriver {
 			role: this.config['defaultRoleId'],
 		};
 
+		console.log({ userPayload });
+
 		// Run hook so the end user has the chance to augment the
 		// user that is about to be created
 		const updatedUserPayload = await emitter.emitFilter(
@@ -127,22 +150,61 @@ export function createSAMLAuthRouter(providerName: string) {
 
 	router.get(
 		'/',
-		asyncHandler(async (req, res) => {
+		asyncHandler(async (_req, res) => {
 			const { sp, idp } = getAuthProvider(providerName) as SAMLAuthDriver;
-			const { context: url } = sp.createLoginRequest(idp, 'redirect');
+
+			sp.entitySetting.relayState = randomBytes(16).toString('hex');
+
+			const { context: url } = sp.createLoginRequest(idp, 'redirect', (loginRequestTemplate) => {
+				const id = sp.entitySetting.generateID?.() as string;
+
+				const bindings = {
+					redirect: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect',
+				};
+
+				const desinationRaw = idp.entityMeta.getSingleSignOnService(bindings.redirect);
+
+				// @ts-ignore
+				const destination = typeof desinationRaw === 'string' ? desinationRaw : desinationRaw[bindings.redirect];
+
+				// @ts-expect-error context actually exists
+				const context = loginRequestTemplate.context
+					.replace(/{ID}/g, id)
+					.replace(/{Destination}/g, destination)
+					.replace(/{AssertionConsumerServiceIndex}/g, '0')
+					.replace(/{AttributeConsumingServiceIndex}/g, '1')
+					.replace(/{Issuer}/g, sp.entityMeta.getEntityID())
+					.replace(/{IssueInstant}/g, new Date().toISOString());
+
+				console.log({ context });
+
+				return { id, context };
+			});
+
 			const parsedUrl = new URL(url);
 
-			if (req.query['redirect']) {
-				const redirect = req.query['redirect'] as string;
+			// if (req.query['redirect']) {
+			// 	const redirect = req.query['redirect'] as string;
 
-				if (isLoginRedirectAllowed(redirect, providerName) === false) {
-					throw new InvalidPayloadError({ reason: `URL "${redirect}" can't be used to redirect after login` });
-				}
+			// 	if (isLoginRedirectAllowed(redirect, providerName) === false) {
+			// 		throw new InvalidPayloadError({ reason: `URL "${redirect}" can't be used to redirect after login` });
+			// 	}
 
-				parsedUrl.searchParams.append('RelayState', redirect);
-			}
+			// 	parsedUrl.searchParams.append('RelayState', redirect);
+			// }
 
 			return res.redirect(parsedUrl.toString());
+		}),
+	);
+
+	router.get(
+		'/:relay',
+		asyncHandler((req, res) => {
+			const relayState = req.params['relay'];
+
+			console.log({ relayState });
+
+			return res.redirect('/users');
 		}),
 	);
 
@@ -177,6 +239,8 @@ export function createSAMLAuthRouter(providerName: string) {
 			try {
 				const { sp, idp } = getAuthProvider(providerName) as SAMLAuthDriver;
 				const { extract } = await sp.parseLoginResponse(idp, 'post', req);
+
+				console.log({ extract });
 
 				const authService = new AuthenticationService({ accountability: req.accountability, schema: req.schema });
 

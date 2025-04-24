@@ -1,0 +1,45 @@
+services:
+  postgres:
+    image: postgres:latest
+    environment:
+      POSTGRES_DB: 'ifo'
+      POSTGRES_USER: 'ifo'
+      POSTGRES_PASSWORD: 'password'
+    volumes:
+      - pgdata_ifo:/var/lib/postgresql/data
+
+  directus:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 8090:8055
+    # volumes:
+    #   - ./templates:/directus/templates
+    #   - ./extensions:/directus/extensions
+    #   - ./uploads:/directus/uploads
+    depends_on:
+      - postgres
+    env_file:
+      - ./.env
+    environment:
+      KEY: 'replace-with-random-value'
+      SECRET: 'replace-with-random-value'
+      ADMIN_EMAIL: 'admin@example.com'
+      ADMIN_PASSWORD: 'directus'
+      ACCESS_TOKEN_TTL: '1h'
+      EXTENSIONS_AUTO_RELOAD: 'true'
+
+      DB_CLIENT: 'pg'
+      DB_HOST: 'postgres'
+      DB_PORT: '5432'
+      DB_DATABASE: 'ifo'
+      DB_USER: 'ifo'
+      DB_PASSWORD: 'password'
+
+      CORS_ENABLED: 'true'
+
+      PUBLIC_URL: 'http://localhost:8088'
+
+volumes:
+  pgdata_ifo:
