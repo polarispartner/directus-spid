@@ -1,6 +1,6 @@
 import * as validator from '@authenio/samlify-node-xmllint';
 import { useEnv } from '@directus/env';
-import { ErrorCode, InvalidCredentialsError, InvalidProviderError, isDirectusError } from '@directus/errors';
+import { ErrorCode, InvalidCredentialsError, InvalidProviderError, isDirectusError, InvalidPayloadError } from '@directus/errors';
 import express, { Router } from 'express';
 import * as samlify from 'samlify';
 import { getAuthProvider } from '../../auth.js';
@@ -15,8 +15,8 @@ import type { AuthDriverOptions, User } from '../../types/index.js';
 import asyncHandler from '../../utils/async-handler.js';
 import { getConfigFromEnv } from '../../utils/get-config-from-env.js';
 import { LocalAuthDriver } from './local.js';
-import { randomBytes } from 'node:crypto';
 import {readFileSync} from 'node:fs';
+import { isLoginRedirectAllowed } from '../../utils/is-login-redirect-allowed.js';
 
 // Register the samlify schema validator
 samlify.setSchemaValidator(validator);
@@ -50,11 +50,7 @@ export class SAMLAuthDriver extends LocalAuthDriver {
     ProtocolBinding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
     AssertionConsumerServiceIndex="{AssertionConsumerServiceIndex}"
     AttributeConsumingServiceIndex="{AttributeConsumingServiceIndex}">
-  <saml:Issuer
-      Format="urn:oasis:names:tc:SAML:2.0:nameid-format:entity"
-      NameQualifier="{Issuer}">
-    {Issuer}
-  </saml:Issuer>
+  <saml:Issuer Format="urn:oasis:names:tc:SAML:2.0:nameid-format:entity" NameQualifier="{Issuer}">{Issuer}</saml:Issuer>
   <samlp:NameIDPolicy
       Format="urn:oasis:names:tc:SAML:2.0:nameid-format:transient"/>
      <samlp:RequestedAuthnContext Comparison="exact">
@@ -155,10 +151,18 @@ export function createSAMLAuthRouter(providerName: string) {
 
 	router.get(
 		'/',
-		asyncHandler(async (_req, res) => {
+		asyncHandler(async (req, res) => {
 			const { sp, idp } = getAuthProvider(providerName) as SAMLAuthDriver;
 
-			sp.entitySetting.relayState = randomBytes(16).toString('hex');
+			if (req.query['redirect']) {
+				const redirect = req.query['redirect'] as string;
+
+				if (isLoginRedirectAllowed(redirect, providerName) === false) {
+					throw new InvalidPayloadError({ reason: `URL "${redirect}" can't be used to redirect after login` });
+				}
+
+				sp.entitySetting.relayState = Buffer.from(redirect, "utf8").toString("base64");
+			}
 
 			const { context: url } = sp.createLoginRequest(idp, 'redirect', (loginRequestTemplate) => {
 				const id = sp.entitySetting.generateID?.() as string;
@@ -188,30 +192,20 @@ export function createSAMLAuthRouter(providerName: string) {
 
 			const parsedUrl = new URL(url);
 
-			// if (req.query['redirect']) {
-			// 	const redirect = req.query['redirect'] as string;
-
-			// 	if (isLoginRedirectAllowed(redirect, providerName) === false) {
-			// 		throw new InvalidPayloadError({ reason: `URL "${redirect}" can't be used to redirect after login` });
-			// 	}
-
-			// 	parsedUrl.searchParams.append('RelayState', redirect);
-			// }
-
 			return res.redirect(parsedUrl.toString());
 		}),
 	);
 
-	router.get(
-		'/:relay',
-		asyncHandler((req, res) => {
-			const relayState = req.params['relay'];
+	// router.get(
+	// 	'/:relay',
+	// 	asyncHandler((req, res) => {
+	// 		const relayState = req.params['relay'];
 
-			console.log({ relayState });
+	// 		console.log({ relayState });
 
-			return res.redirect('/users');
-		}),
-	);
+	// 		return res.redirect('/users');
+	// 	}),
+	// );
 
 	router.post(
 		'/logout',
@@ -268,7 +262,7 @@ export function createSAMLAuthRouter(providerName: string) {
 						res.cookie(env['REFRESH_TOKEN_COOKIE_NAME'] as string, refreshToken, REFRESH_COOKIE_OPTIONS);
 					}
 
-					return res.redirect(relayState);
+					return res.redirect(Buffer.from(relayState, "base64").toString("utf8"));
 				}
 
 				return next();
