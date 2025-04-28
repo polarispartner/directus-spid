@@ -1,3 +1,89 @@
+# ⚠️ Notice: Fork with SPID Authentication
+
+> This repository is a **custom fork** of [Directus](https://directus.io) adapted to support **SPID Authentication** (Italian Public Digital Identity System).
+
+Please note that it follows the official Directus releases but introduces customizations specific to SPID integration.  
+If you are looking for the standard Directus project, visit the [official repository](https://github.com/directus/directus).
+
+---
+
+# 🛠️ How to Contribute to This Fork
+
+Follow the steps below if you need to make changes or add features:
+
+1. From the **GitHub "Tags"** section, **start from the latest `v11.6.1-spid<x>` version**.
+2. Create a new branch (optional but recommended) and apply your changes.
+3. Commit your changes normally.
+4. Tag your commit using:
+   
+   ```bash
+   git tag -a v11.6.1-spid<x> -m "Your commit message"
+   ```
+
+   Replace `<x>` with the next available subversion number (e.g., `v11.6.1-spid14`).
+
+5. Push both commits and tags to the repository:
+
+   ```bash
+   git push origin --tags
+   ```
+
+---
+
+# 📦 How to Build and Push the Docker Image to Azure ECR
+
+After making changes, you can build and push a new Docker image following these steps:
+
+1. **Login to Azure**:
+
+   ```bash
+   az login
+   ```
+
+2. **Build the Docker image**:
+
+   ```bash
+   docker build -t $IMAGE_NAME:$IMAGE_TAG .
+   ```
+
+   Example:
+
+   ```bash
+   docker build -t directus-spid:11.6.1-spid13 .
+   ```
+
+3. **Tag the Docker image for the Azure Container Registry**:
+
+   ```bash
+   docker tag $IMAGE_NAME:$IMAGE_TAG $LOGIN_SERVER/$IMAGE_NAME:$IMAGE_TAG
+   ```
+
+   Example:
+
+   ```bash
+   docker tag directus-spid:11.6.1-spid13 ifodevregistry.azurecr.io/directus-spid:11.6.1-spid13
+   ```
+
+4. **Push the Docker image to Azure ECR**:
+
+   ```bash
+   docker push ifodevregistry.azurecr.io/directus-spid:11.6.1-spid13
+   ```
+
+5. **If the push fails**, login to the Azure ECR with Docker:
+
+   ```bash
+   docker login $LOGIN_SERVER \
+     --username <clientId> \
+     --password <clientSecret>
+   ```
+
+   You can find the username and password in the Azure portal under:  
+   **Settings → Identity** for your Azure Container Registry.
+
+---
+---
+
 <p align="center"><img alt="Directus Logo" src="https://user-images.githubusercontent.com/522079/158864859-0fbeae62-9d7a-4619-b35e-f8fa5f68e0c8.png"></p>
 
 ---
