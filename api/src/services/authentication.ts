@@ -45,7 +45,7 @@ export class AuthenticationService {
 	}
 
 	/**
-	 * Retrieve the tokens for a given user email.
+	 * Retrieve the tokens for a given user username.
 	 *
 	 * Password is optional to allow usage of this function within the SSO flow and extensions. Make sure
 	 * to handle password existence checks elsewhere
@@ -87,6 +87,7 @@ export class AuthenticationService {
 				'provider',
 				'external_identifier',
 				'auth_data',
+				'username',
 			)
 			.from('directus_users')
 			.where('id', userId)
@@ -124,7 +125,7 @@ export class AuthenticationService {
 			);
 		};
 
-		if (user?.status !== 'active' || user?.provider !== providerName) {
+		if (user?.status !== 'active' || (user?.provider !== 'default' && user?.provider !== providerName)) {
 			emitStatus('fail');
 			await stall(STALL_TIME, timeStart);
 			throw new InvalidCredentialsError();
@@ -287,6 +288,7 @@ export class AuthenticationService {
 				user_first_name: 'u.first_name',
 				user_last_name: 'u.last_name',
 				user_email: 'u.email',
+				user_username: 'u.username',
 				user_password: 'u.password',
 				user_status: 'u.status',
 				user_provider: 'u.provider',
@@ -342,6 +344,7 @@ export class AuthenticationService {
 				last_name: record.user_last_name,
 				email: record.user_email,
 				password: record.user_password,
+				username: record.username,
 				status: record.user_status,
 				provider: record.user_provider,
 				external_identifier: record.user_external_identifier,

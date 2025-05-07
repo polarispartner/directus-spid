@@ -17,15 +17,14 @@ import { AuthDriver } from '../auth.js';
 
 export class LocalAuthDriver extends AuthDriver {
 	async getUserID(payload: Record<string, any>): Promise<string> {
-		if (!payload['email']) {
+		if (!payload['username'] && !payload['email']) {
 			throw new InvalidCredentialsError();
 		}
 
-		const user = await this.knex
-			.select('id')
-			.from('directus_users')
-			.whereRaw('LOWER(??) = ?', ['email', payload['email'].toLowerCase()])
-			.first();
+		const field = payload['username'] ? 'username' : 'email';
+		const value = payload[field].toLowerCase();
+
+		const user = await this.knex.select('id').from('directus_users').whereRaw('LOWER(??) = ?', [field, value]).first();
 
 		if (!user) {
 			throw new InvalidCredentialsError();
@@ -51,11 +50,15 @@ export function createLocalAuthRouter(provider: string): Router {
 	const router = Router();
 
 	const userLoginSchema = Joi.object({
-		email: Joi.string().email().required(),
+		username: Joi.string(),
+		email: Joi.string().email(),
 		password: Joi.string().required(),
 		mode: Joi.string().valid('cookie', 'json', 'session'),
 		otp: Joi.string(),
-	}).unknown();
+	})
+		.or('username', 'email')
+		.required()
+		.unknown();
 
 	router.post(
 		'/',

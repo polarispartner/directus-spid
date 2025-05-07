@@ -15,7 +15,7 @@ import type { AuthDriverOptions, User } from '../../types/index.js';
 import asyncHandler from '../../utils/async-handler.js';
 import { getConfigFromEnv } from '../../utils/get-config-from-env.js';
 import { LocalAuthDriver } from './local.js';
-import {readFileSync} from 'node:fs';
+import { readFileSync } from 'node:fs';
 // import { isLoginRedirectAllowed } from '../../utils/is-login-redirect-allowed.js';
 
 // Register the samlify schema validator
@@ -38,6 +38,7 @@ export class SAMLAuthDriver extends LocalAuthDriver {
 		this.sp = samlify.ServiceProvider({
 			...spConfig,
 			metadata: readFileSync(spConfig['metadata']),
+			// metadata: Buffer.from(readFileSync(spConfig['metadata'])).toString('utf8'),
 
 			loginRequestTemplate: {
 				context: `<samlp:AuthnRequest
@@ -150,6 +151,21 @@ export function createSAMLAuthRouter(providerName: string) {
 	);
 
 	router.get(
+		'/:relayState',
+		asyncHandler(async (req, res) => {
+			const { relayState } = req.params;
+
+			if (!relayState) {
+				return res.redirect('/');
+			}
+
+			const redirect = Buffer.from(relayState, 'base64').toString('utf8');
+
+			return res.redirect(redirect);
+		}),
+	);
+
+	router.get(
 		'/',
 		asyncHandler(async (req, res) => {
 			const { sp, idp } = getAuthProvider(providerName) as SAMLAuthDriver;
@@ -162,7 +178,7 @@ export function createSAMLAuthRouter(providerName: string) {
 				// 	throw new InvalidPayloadError({ reason: `URL "${redirect}" can't be used to redirect after login` });
 				// }
 
-				sp.entitySetting.relayState = Buffer.from(redirect, "utf8").toString("base64");
+				sp.entitySetting.relayState = Buffer.from(redirect, 'utf8').toString('base64');
 			}
 
 			const { context: url } = sp.createLoginRequest(idp, 'redirect', (loginRequestTemplate) => {
@@ -252,7 +268,7 @@ export function createSAMLAuthRouter(providerName: string) {
 						res.cookie(env['REFRESH_TOKEN_COOKIE_NAME'] as string, refreshToken, REFRESH_COOKIE_OPTIONS);
 					}
 
-					return res.redirect(Buffer.from(relayState, "base64").toString("utf8"));
+					return res.redirect(Buffer.from(relayState, 'base64').toString('utf8'));
 				}
 
 				return next();
