@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata" xmlns:ds="http://www.w3.org/2000/09/xmldsig#" ID="sp-entity-1" entityID="https://localhost:8056"><ds:Signature>
+<ds:SignedInfo>
+<ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
+<ds:SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"/>
+<ds:Reference URI="#sp-entity-1">
+<ds:Transforms>
+<ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/>
+<ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
+</ds:Transforms>
+<ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/>
+<ds:DigestValue>aJxkuaHVYHJmjnViQEwvNI8Ukc1SET6+46x8Mc2mtIA=</ds:DigestValue>
+</ds:Reference>
+</ds:SignedInfo>
+<ds:SignatureValue>
+pFEI4uyM4Ofm1frywssBXu0+o2SJ19bWSW2/49eSIMSkZq6Ys2XpmoW/yAnPwpL/zAktW+ktuQ81
+LfzAejMIszdZkKdXvVTwDYRhdC4QyACNRtcA1jxQb8sL4cKnFL6oDMOsQABdupSzKHT1x7YQhOd1
+OdAg36Ou3x64rSnsN7YdfpgvFIsVICoK1pszdU14w+eu7qr6Er5rscOXvJMArsT8OMAlPC4Q1iys
+1xw61xOrsRExtjsZj/KbWf25yHLCNZHIpvqd668pJMV07gETaFbF95RRUy8TztqCk6su4IuAQkTu
+hsV/X4eV4Wob8WOV1DAGOIqhWCNI9VUTsY/KbgMO3rXQJAvh684TxAPTfZppxCetx4bivV6s/ivZ
+vpdPPgTxVUbyp/ErAdI0I43KMcU/NGzhqsId+ZrW0vUCXVKcCcGCa0iFRgX2V4BClSeOEcwnt6Pq
+ESH1kltko7Sqp2QlNlToIgGbwMg1MHPOaO2nsw2iXDFKGnqifBJOPDCx9sLI0Nq+Z878NZX9zLsR
+pCsDydEUQjviP670JRHAK0236vMdUi07yWIHiNkM6mUmsjqMiw4sTYXRZbIsvMcikbm8k5NkULIb
+VRynHsefAJZKcI6c6q42V0LVZkvdTIt7GMFOR37MwvixhWvz6XcM4oki6VcEYLCuKdZFRIiLq4A=
+</ds:SignatureValue>
+<ds:KeyInfo>
+<ds:KeyValue>
+<ds:RSAKeyValue>
+<ds:Modulus>
+pd+FBVyui0KfYoQbgTYSNEJzPp2qWogMEgNyjwceviInYAAaa4N/vSautAl7udeT+scrw/KTcIv+
+XaB9KyLFj3HOe0IRpEeJkMTG4Rr2liOsFmQhZTTYnpDHd3zmBf/wAl7LDvFI9pxqORoWiFemVO0g
+X2co4MeKJGFcZ/Ci+taLGKdZydwm+G7MXljYZ2c6hzmAjeNGGc12XXkyJHnNVLTmxTMcLEU8672V
+4ojYzY/OLHAL0DsGfgeEyMWhVfF8M2OmsM09maInmajLJaUq6RuX9nHsFPM6H0ZN4MWrpUuvLSHQ
+IjxNTQNE292zFZF+FcCdUeckKh+5bzuJmkJPDvLoy4eC3PQozyOX70PXKnQWVHEqymwQiIsFoBZs
+3Qk0OdkFTmJcsRjfFIc8JeLqDRs77RZ92J5oc6LkUK/JDPvmq26DMIyFKPrYMJNFl0A2SoXCCjm+
+oc3TckxuhH5hqWgtrj5DnwETeBVdBDef4Xs3zRxTduZzXKzcdID2YpoSVXwMZmyOnwM2PGoppI4U
+C5QACW1govOtfZQqKmT2CrVw5l7i76Q05voXFljiIfY2pEnucXG1oeb2KJdZp8aiiehi0x2TKOXV
+ePyFZ05I0aTcorE/oYdzDI6Fr8p7QF1ZLOelPxCuAFtgV7HeWoFTroKye+tBm2ru6OT/LkxBdw8=
+</ds:Modulus>
+<ds:Exponent>AQAB</ds:Exponent>
+</ds:RSAKeyValue>
+</ds:KeyValue>
+<ds:X509Data>
+<ds:X509Certificate>
+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
+RpiqPjISJeJLWn4Iyj3ae8UM9oaY
+</ds:X509Certificate>
+</ds:X509Data>
+</ds:KeyInfo>
+</ds:Signature>
+	<md:SPSSODescriptor AuthnRequestsSigned="true" WantAssertionsSigned="true" protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+		<md:KeyDescriptor use="signing">
+			<ds:KeyInfo>
+				<ds:X509Data>
+					<ds:X509Certificate>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</ds:X509Certificate>
+				</ds:X509Data>
+			</ds:KeyInfo>
+		</md:KeyDescriptor>
+		<md:SingleLogoutService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://localhost:8056/auth/login/spid/logout"/>
+		<md:NameIDFormat>urn:oasis:names:tc:SAML:2.0:nameid-format:transient</md:NameIDFormat>
+		<md:AssertionConsumerService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="https://localhost:8056/auth/login/spid/acs" index="0" isDefault="true"/>
+		<md:AttributeConsumingService index="1">
+			<md:ServiceName xml:lang="it">Polaris Partner Srl SPID</md:ServiceName>
+			<md:RequestedAttribute Name="name"/>
+			<md:RequestedAttribute Name="familyName"/>
+			<md:RequestedAttribute Name="fiscalNumber"/>
+			<md:RequestedAttribute Name="email"/>
+		</md:AttributeConsumingService>
+	</md:SPSSODescriptor>
+	<md:Organization>
+		<md:OrganizationName xml:lang="it">Polaris Partner Srl</md:OrganizationName>
+		<md:OrganizationDisplayName xml:lang="it">Polaris Partner</md:OrganizationDisplayName>
+		<md:OrganizationURL xml:lang="it">https://polarispartner.com</md:OrganizationURL>
+	</md:Organization>
+	<md:ContactPerson contactType="other">
+		<md:Extensions>
+			<spid:VATNumber xmlns:spid="https://spid.gov.it/saml-extensions">IT16274151006			
+			</spid:VATNumber>
+			<spid:Public xmlns:spid="https://spid.gov.it/saml-extensions"/>
+			</md:Extensions>
+			<md:EmailAddress>tech@polarispartner.com</md:EmailAddress>
+		</md:ContactPerson>
+	</md:EntityDescriptor>

@@ -1,12 +1,6 @@
 import * as validator from '@authenio/samlify-node-xmllint';
 import { useEnv } from '@directus/env';
-import {
-	ErrorCode,
-	InvalidCredentialsError,
-	InvalidPayloadError,
-	InvalidProviderError,
-	isDirectusError,
-} from '@directus/errors';
+import { ErrorCode, InvalidCredentialsError, InvalidProviderError, isDirectusError } from '@directus/errors';
 import express, { Router } from 'express';
 import * as samlify from 'samlify';
 import { getAuthProvider } from '../../auth.js';
@@ -21,7 +15,8 @@ import type { AuthDriverOptions, User } from '../../types/index.js';
 import asyncHandler from '../../utils/async-handler.js';
 import { getConfigFromEnv } from '../../utils/get-config-from-env.js';
 import { LocalAuthDriver } from './local.js';
-import { isLoginRedirectAllowed } from '../../utils/is-login-redirect-allowed.js';
+import { readFileSync } from 'node:fs';
+// import { isLoginRedirectAllowed } from '../../utils/is-login-redirect-allowed.js';
 
 // Register the samlify schema validator
 samlify.setSchemaValidator(validator);
@@ -38,7 +33,35 @@ export class SAMLAuthDriver extends LocalAuthDriver {
 		this.config = config;
 		this.usersService = new UsersService({ knex: this.knex, schema: this.schema });
 
-		this.sp = samlify.ServiceProvider(getConfigFromEnv(`AUTH_${config['provider'].toUpperCase()}_SP`));
+		const spConfig = getConfigFromEnv(`AUTH_${config['provider'].toUpperCase()}_SP`);
+
+		this.sp = samlify.ServiceProvider({
+			...spConfig,
+			metadata: readFileSync(spConfig['metadata']),
+			// metadata: Buffer.from(readFileSync(spConfig['metadata'])).toString('utf8'),
+
+			loginRequestTemplate: {
+				context: `<samlp:AuthnRequest
+    xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol"
+    xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion"
+    ID="{ID}"
+    Version="2.0"
+    IssueInstant="{IssueInstant}"
+    Destination="{Destination}"
+    ProtocolBinding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
+    AssertionConsumerServiceIndex="{AssertionConsumerServiceIndex}"
+    AttributeConsumingServiceIndex="{AttributeConsumingServiceIndex}">
+  <saml:Issuer Format="urn:oasis:names:tc:SAML:2.0:nameid-format:entity" NameQualifier="{Issuer}">{Issuer}</saml:Issuer>
+  <samlp:NameIDPolicy
+      Format="urn:oasis:names:tc:SAML:2.0:nameid-format:transient"/>
+     <samlp:RequestedAuthnContext Comparison="exact">
+  <saml:AuthnContextClassRef>https://www.spid.gov.it/SpidL1</saml:AuthnContextClassRef>
+</samlp:RequestedAuthnContext>
+
+</samlp:AuthnRequest>`,
+			},
+		});
+
 		this.idp = samlify.IdentityProvider(getConfigFromEnv(`AUTH_${config['provider'].toUpperCase()}_IDP`));
 	}
 
@@ -86,6 +109,8 @@ export class SAMLAuthDriver extends LocalAuthDriver {
 			role: this.config['defaultRoleId'],
 		};
 
+		console.log({ userPayload });
+
 		// Run hook so the end user has the chance to augment the
 		// user that is about to be created
 		const updatedUserPayload = await emitter.emitFilter(
@@ -126,21 +151,63 @@ export function createSAMLAuthRouter(providerName: string) {
 	);
 
 	router.get(
+		'/:relayState',
+		asyncHandler(async (req, res) => {
+			const { relayState } = req.params;
+
+			if (!relayState) {
+				return res.redirect('/');
+			}
+
+			const redirect = Buffer.from(relayState, 'base64').toString('utf8');
+
+			return res.redirect(redirect);
+		}),
+	);
+
+	router.get(
 		'/',
 		asyncHandler(async (req, res) => {
 			const { sp, idp } = getAuthProvider(providerName) as SAMLAuthDriver;
-			const { context: url } = sp.createLoginRequest(idp, 'redirect');
-			const parsedUrl = new URL(url);
 
 			if (req.query['redirect']) {
 				const redirect = req.query['redirect'] as string;
 
-				if (isLoginRedirectAllowed(redirect, providerName) === false) {
-					throw new InvalidPayloadError({ reason: `URL "${redirect}" can't be used to redirect after login` });
-				}
+				// TODO: Uncomment when the isLoginRedirectAllowed function is fixed with deeplinks
+				// if (isLoginRedirectAllowed(redirect, providerName) === false) {
+				// 	throw new InvalidPayloadError({ reason: `URL "${redirect}" can't be used to redirect after login` });
+				// }
 
-				parsedUrl.searchParams.append('RelayState', redirect);
+				sp.entitySetting.relayState = Buffer.from(redirect, 'utf8').toString('base64');
 			}
+
+			const { context: url } = sp.createLoginRequest(idp, 'redirect', (loginRequestTemplate) => {
+				const id = sp.entitySetting.generateID?.() as string;
+
+				const bindings = {
+					redirect: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect',
+				};
+
+				const desinationRaw = idp.entityMeta.getSingleSignOnService(bindings.redirect);
+
+				// @ts-ignore
+				const destination = typeof desinationRaw === 'string' ? desinationRaw : desinationRaw[bindings.redirect];
+
+				// @ts-expect-error context actually exists
+				const context = loginRequestTemplate.context
+					.replace(/{ID}/g, id)
+					.replace(/{Destination}/g, destination)
+					.replace(/{AssertionConsumerServiceIndex}/g, '0')
+					.replace(/{AttributeConsumingServiceIndex}/g, '1')
+					.replace(/{Issuer}/g, sp.entityMeta.getEntityID())
+					.replace(/{IssueInstant}/g, new Date().toISOString());
+
+				console.log({ context });
+
+				return { id, context };
+			});
+
+			const parsedUrl = new URL(url);
 
 			return res.redirect(parsedUrl.toString());
 		}),
@@ -178,6 +245,8 @@ export function createSAMLAuthRouter(providerName: string) {
 				const { sp, idp } = getAuthProvider(providerName) as SAMLAuthDriver;
 				const { extract } = await sp.parseLoginResponse(idp, 'post', req);
 
+				console.log({ extract });
+
 				const authService = new AuthenticationService({ accountability: req.accountability, schema: req.schema });
 
 				const { accessToken, refreshToken, expires } = await authService.login(providerName, extract.attributes, {
@@ -199,7 +268,7 @@ export function createSAMLAuthRouter(providerName: string) {
 						res.cookie(env['REFRESH_TOKEN_COOKIE_NAME'] as string, refreshToken, REFRESH_COOKIE_OPTIONS);
 					}
 
-					return res.redirect(relayState);
+					return res.redirect(Buffer.from(relayState, 'base64').toString('utf8'));
 				}
 
 				return next();

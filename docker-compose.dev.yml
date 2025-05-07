@@ -1,0 +1,205 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: 'ifo'
+      POSTGRES_USER: 'ifo'
+      POSTGRES_PASSWORD: 'password'
+    volumes:
+      - pgdata_ifo:/var/lib/postgresql/data
+
+  directus:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 8090:8055
+    volumes:
+    #   - ./templates:/directus/templates
+    #   - ./extensions:/directus/extensions
+      - ./uploads:/directus/uploads
+    depends_on:
+      - postgres
+    # env_file:
+    #   - ./.env
+    environment:
+      KEY: 'replace-with-random-value'
+      SECRET: 'replace-with-random-value'
+      ADMIN_EMAIL: 'admin@example.com'
+      ADMIN_PASSWORD: 'directus'
+      ACCESS_TOKEN_TTL: '1h'
+      EXTENSIONS_AUTO_RELOAD: 'true'
+
+      DB_CLIENT: 'pg'
+      DB_HOST: 'postgres'
+      DB_PORT: '5432'
+      DB_DATABASE: 'ifo'
+      DB_USER: 'ifo'
+      DB_PASSWORD: 'password'
+
+      CORS_ENABLED: 'true'
+
+      PUBLIC_URL: 'http://localhost:8088'
+
+      AUTH_PROVIDERS: "spid"
+
+      AUTH_SPID_DRIVER: "saml"
+      AUTH_SPID_MODE: "session"
+
+      AUTH_SPID_IDP_metadata: |
+        <md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata" xmlns:ds="http://www.w3.org/2000/09/xmldsig#" ID="_8d43896adcc84dad9fc2e98b9d8f3f5be30d69c168" entityID="https://localhost:8443">
+          <ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
+          <ds:SignedInfo>
+          <ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
+          <ds:SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"/>
+          <ds:Reference URI="#_8d43896adcc84dad9fc2e98b9d8f3f5be30d69c168">
+          <ds:Transforms>
+          <ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/>
+          <ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
+          </ds:Transforms>
+          <ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/>
+          <ds:DigestValue>rodQjmmRJs6cqJnHq4TcwJ5HeHdnlmEp/mO7LkqZ9V0=</ds:DigestValue>
+          </ds:Reference>
+          </ds:SignedInfo>
+          <ds:SignatureValue>lXR7ZLgPCIBiqtll9bJUzaDZsBi2TIrHzVUywYzA04mscMYlEIZcHcNMRQYbeuzGS+b5VAqoPG64rgAy+nA0lJZU9fRs9eoERkLsJb/jojlpVuN522PbbxaZG/yEZGIZkvKUNa4oQdvtm+36h1b5kYvJAM4hBdxMeYMvTVJ5KLc+NReBRNGwgvTIOyHycwvi8RmuSk+oMNvgiE9xoonTTOa5DMezcVJXwLokJzhXPQQbcrWK+uO6aTAyaS8nQMcOuHU4L/7JcqmHzPf5C7R11oyz+gJy/IkfzjYiv1F8j+d1c0YR6yRX9MFxwcYzjm95sjS1UHaMRKvIMbXkaVtQ2g==</ds:SignatureValue>
+          <ds:KeyInfo>
+          <ds:X509Data>
+          <ds:X509Certificate>MIIEATCCAumgAwIBAgIUWvV6Ls+Ez/jKVoIJuhRhKabPugAwDQYJKoZIhvcNAQELBQAwgY8xCzAJBgNVBAYTAklUMQ0wCwYDVQQIDARSb21lMQ0wCwYDVQQHDARSb21lMQ0wCwYDVQQKDARBZ0lEMQ0wCwYDVQQLDARBZ0lEMR4wHAYDVQQDDBV2YWxpZGF0b3Iuc3BpZC5nb3YuaXQxJDAiBgkqhkiG9w0BCQEWFXNwaWQudGVjaEBhZ2lkLmdvdi5pdDAeFw0yNTAzMTMxMjE0MDZaFw0yNzAzMTMxMjE0MDZaMIGPMQswCQYDVQQGEwJJVDENMAsGA1UECAwEUm9tZTENMAsGA1UEBwwEUm9tZTENMAsGA1UECgwEQWdJRDENMAsGA1UECwwEQWdJRDEeMBwGA1UEAwwVdmFsaWRhdG9yLnNwaWQuZ292Lml0MSQwIgYJKoZIhvcNAQkBFhVzcGlkLnRlY2hAYWdpZC5nb3YuaXQwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCXI6XbIIWneL5d42b5tMI+OqfpSvYzymQuCkkTtjw0I9Yg2iGfJumGXizZHDc3Oo4rSsZhLn7JkS3TUDIDS8ftS3Igc6gO5Pe0aGDn7aYRChL51N2Nc6CaBWd2e/yMY0RNVzMxpxYEO5mAireduqIRm/eHboL5Bx3fId1Ym7FbPjj+l2fYHn2xY58emJNp1vmwmyQhrDnj/XDOIngcqdmQX5EDPv8zsvX8h1/6AzMngMH+qyuKUikTZm4N16LRVXGGtRYUk1ZhfVUMS90jWcNXBIs634ErHPonj/7VFwso0XmkJF6rBZz7anXhnqPavvGhbja+oskjsvQAiqwnQ66vAgMBAAGjUzBRMB0GA1UdDgQWBBStSe+G3htq/uYFKHHQ+mxyG8IQEzAfBgNVHSMEGDAWgBStSe+G3htq/uYFKHHQ+mxyG8IQEzAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQBxsAeL/6cXIePCWa2cw7xDGOqab7X2dl93IQRCM1EKkkwiYDs7AaFhoxTdL4peFiQows2VNmU4mpYRnqW4PVerz6Juq6hIPctIibDuh3p88XWFtpXF8jHqcBOGr0YOhOua9uvy43sKogJts1xsikK5u3AWf0VNssraLN7eR+EDcLwIiFS1+imQiHRlFPPx6ZoSeJtCAVDTbQ4SrVRA5nHEZbBYkY7dIZX6dc1YZTsXub8BLZDI2BK1aGOysxjZ1mjFNH4LX/0mCDOvXTchzKttC3r8wZTEy1DGJopVn0BUZTAkKHZZt9fwpJqHiTpwqbRuo2gCM52yo9AZRdVFWMw/</ds:X509Certificate>
+          </ds:X509Data>
+          </ds:KeyInfo>
+          </ds:Signature>
+          <md:IDPSSODescriptor WantAuthnRequestsSigned="true" protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+          <md:KeyDescriptor use="signing">
+          <ds:KeyInfo>
+          <ds:X509Data>
+          <ds:X509Certificate>MIIEATCCAumgAwIBAgIUWvV6Ls+Ez/jKVoIJuhRhKabPugAwDQYJKoZIhvcNAQELBQAwgY8xCzAJBgNVBAYTAklUMQ0wCwYDVQQIDARSb21lMQ0wCwYDVQQHDARSb21lMQ0wCwYDVQQKDARBZ0lEMQ0wCwYDVQQLDARBZ0lEMR4wHAYDVQQDDBV2YWxpZGF0b3Iuc3BpZC5nb3YuaXQxJDAiBgkqhkiG9w0BCQEWFXNwaWQudGVjaEBhZ2lkLmdvdi5pdDAeFw0yNTAzMTMxMjE0MDZaFw0yNzAzMTMxMjE0MDZaMIGPMQswCQYDVQQGEwJJVDENMAsGA1UECAwEUm9tZTENMAsGA1UEBwwEUm9tZTENMAsGA1UECgwEQWdJRDENMAsGA1UECwwEQWdJRDEeMBwGA1UEAwwVdmFsaWRhdG9yLnNwaWQuZ292Lml0MSQwIgYJKoZIhvcNAQkBFhVzcGlkLnRlY2hAYWdpZC5nb3YuaXQwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCXI6XbIIWneL5d42b5tMI+OqfpSvYzymQuCkkTtjw0I9Yg2iGfJumGXizZHDc3Oo4rSsZhLn7JkS3TUDIDS8ftS3Igc6gO5Pe0aGDn7aYRChL51N2Nc6CaBWd2e/yMY0RNVzMxpxYEO5mAireduqIRm/eHboL5Bx3fId1Ym7FbPjj+l2fYHn2xY58emJNp1vmwmyQhrDnj/XDOIngcqdmQX5EDPv8zsvX8h1/6AzMngMH+qyuKUikTZm4N16LRVXGGtRYUk1ZhfVUMS90jWcNXBIs634ErHPonj/7VFwso0XmkJF6rBZz7anXhnqPavvGhbja+oskjsvQAiqwnQ66vAgMBAAGjUzBRMB0GA1UdDgQWBBStSe+G3htq/uYFKHHQ+mxyG8IQEzAfBgNVHSMEGDAWgBStSe+G3htq/uYFKHHQ+mxyG8IQEzAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQBxsAeL/6cXIePCWa2cw7xDGOqab7X2dl93IQRCM1EKkkwiYDs7AaFhoxTdL4peFiQows2VNmU4mpYRnqW4PVerz6Juq6hIPctIibDuh3p88XWFtpXF8jHqcBOGr0YOhOua9uvy43sKogJts1xsikK5u3AWf0VNssraLN7eR+EDcLwIiFS1+imQiHRlFPPx6ZoSeJtCAVDTbQ4SrVRA5nHEZbBYkY7dIZX6dc1YZTsXub8BLZDI2BK1aGOysxjZ1mjFNH4LX/0mCDOvXTchzKttC3r8wZTEy1DGJopVn0BUZTAkKHZZt9fwpJqHiTpwqbRuo2gCM52yo9AZRdVFWMw/</ds:X509Certificate>
+          </ds:X509Data>
+          </ds:KeyInfo>
+          </md:KeyDescriptor>
+          <md:SingleLogoutService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="https://localhost:8443/samlsso" ResponseLocation="https://localhost:8443/samlsso"/>
+          <md:SingleLogoutService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://localhost:8443/samlsso" ResponseLocation="https://localhost:8443/samlsso"/>
+          <md:NameIDFormat>urn:oasis:names:tc:SAML:2.0:nameid-format:transient</md:NameIDFormat>
+          <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="https://localhost:8443/samlsso"/>
+          <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://localhost:8443/samlsso"/>
+          </md:IDPSSODescriptor>
+          </md:EntityDescriptor>
+
+      AUTH_SPID_SP_metadata: "uploads/sp-metadata.xml"
+
+      AUTH_SPID_ALLOW_PUBLIC_REGISTRATION: "true"
+      AUTH_SPID_DEFAULT_ROLE_ID: "3fc7ec60-5aff-42a8-afc2-314f90dbdcfe"
+      AUTH_SPID_IDENTIFIER_KEY: "fiscalNumber"
+      AUTH_SPID_EMAIL_KEY: "email"
+      AUTH_SPID_GIVEN_NAME_KEY: "name"
+      AUTH_SPID_FAMILY_NAME_KEY: "familyName"
+
+      AUTH_SPID_SP_PRIVATE_KEY: |-
+        -----BEGIN PRIVATE KEY-----
+        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
+        pvRTJ5XhE3Jwv0B8OrLaw1y3u4CKXg==
+        -----END PRIVATE KEY-----
+
+      AUTH_SPID_SP_ENC_PRIVATE_KEY: |-
+        -----BEGIN PRIVATE KEY-----
+        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
+        AZrs8D7WBlpwSdUHd0L83bMW6Y/pAA==
+        -----END PRIVATE KEY-----
+
+volumes:
+  pgdata_ifo:
