@@ -125,7 +125,9 @@ export class AuthenticationService {
 			);
 		};
 
-		if (user?.status !== 'active' || (user?.provider !== 'default' && user?.provider !== providerName)) {
+		if (user?.status !== 'active' || !( user?.provider === providerName ||
+			(['spid', 'default'].includes(user?.provider) &&
+			 ['spid', 'default'].includes(providerName)))) {
 			emitStatus('fail');
 			await stall(STALL_TIME, timeStart);
 			throw new InvalidCredentialsError();
